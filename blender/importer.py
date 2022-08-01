@@ -85,6 +85,12 @@ class ImportElpk(Operator, ImportHelper):
                     'This armature should be from a model from the same game as the animation'
     )
 
+    rename_cameras: BoolProperty(
+        name='Rename camera actions',
+        description='Change the camera action names to include the name of the heat action they\'re used for. May not always work',
+        default=True,
+    )
+
     filter_glob: StringProperty(default="*", options={"HIDDEN"})
 
     def draw(self, context):
@@ -102,6 +108,7 @@ class ImportElpk(Operator, ImportHelper):
         layout.separator()
         layout.label(text='Animation')
         layout.prop(self, 'armature_name')
+        layout.prop(self, 'rename_cameras')
 
     def execute(self, context):
         import time
@@ -136,6 +143,7 @@ class ElpkImporter:
         self.import_extra_skeletons = import_settings.get('import_extra_skeletons')
 
         self.armature_name = import_settings.get('armature_name')
+        self.rename_cameras = import_settings.get('rename_cameras')
 
     elpk: Elpk
     collection: bpy.types.Collection
@@ -241,6 +249,8 @@ class ElpkImporter:
         page_armature = page_khbase = None
 
         cam_counter = 0
+        cams: List[Action] = list()
+        poses: List[Action] = list()
 
         for page in self.elpk.pages:
             page_armature = None
@@ -265,10 +275,10 @@ class ElpkImporter:
             khcame_list = page.files[KHCame]
             for khpose in page.files[KHPose]:
                 if KHPoseFlag.CAMERA in khpose.pose_flags:
-                    self.make_camera_action(khpose, cam_counter, khcame_list[0] if khcame_list else None)
+                    cams.append(self.make_camera_action(khpose, cam_counter, khcame_list[0] if khcame_list else None))
                     cam_counter += 1
                 elif self.armature_name:
-                    self.make_action(khpose)
+                    poses.append(self.make_action(khpose))
 
             for khmig in page.files[KHMig]:
                 self.make_image(khmig, page.page_hash)
@@ -322,6 +332,16 @@ class ElpkImporter:
             # Set the armature as the active object after importing everything
             self.context.view_layer.objects.active = armature_obj
             bpy.ops.object.mode_set(mode='OBJECT')
+
+        # Try to rename camera actions
+        if self.rename_cameras and cams and poses:
+            for p in [x for x in poses if x.name.startswith('exMB_') and x.name[10:12] == '_A']:
+                cam = [c for c in cams if c.frame_range[1] == p.frame_range[1]]
+
+                if len(cam) == 1:
+                    cam = cam[0]
+                    cams.remove(cam)
+                    cam.name = f'{p.name[:10]}_Camera {p.name[13:]}'
 
         if self.look_for_textures and 'MDL' in os.path.basename(self.filepath):
             head, tail = os.path.split(self.filepath)
@@ -530,7 +550,6 @@ class ElpkImporter:
             if is_skinned:
                 for i, weight in enumerate(v.weights):
                     if weight > 0:
-                        # vert[deform][vertex_group_indices[v.bone_hashes[i]]] = weight
                         vert[deform][vertex_group_indices.get_or_next(v.bone_hashes[i])] = weight
 
         # Adapted from here:
