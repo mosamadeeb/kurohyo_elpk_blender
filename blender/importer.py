@@ -842,6 +842,7 @@ class ElpkImporter:
             fc.keyframe_points[0].co = (0.0, 0)  # 0 == QUATERNION
             fc.update()
 
+        self.context.scene.render.fps = 30
         self.context.scene.frame_start = 0
 
         return action
@@ -920,7 +921,7 @@ class ElpkImporter:
                 if fc:
                     action.fcurves.remove(fc)
 
-        # self.context.scene.render.fps = 30
+        self.context.scene.render.fps = 30
         self.context.scene.frame_start = 0
         # self.context.scene.frame_current = 0
         # self.context.scene.frame_end = int(end_frame)
