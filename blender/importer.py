@@ -371,12 +371,15 @@ class ElpkImporter:
         prefs = self.context.preferences
 
         if 'kurohyo_elpk_blender' not in prefs.addons:
-            raise Exception()
+            raise Exception('Unable to find addon preferences.')
 
         addon_prefs = prefs.addons['kurohyo_elpk_blender'].preferences
 
         skeleton_bin_type = addon_prefs.skeleton_bin_type
         skeleton_bin_path = addon_prefs.skeleton_bin_path
+
+        if not os.path.isfile(skeleton_bin_path):
+            raise Exception('Could not find \"skeleton.bin\". Go to the the addon preferences and set the correct path.')
 
         if skeleton_bin_type == 'KH1':
             page_indices = {
@@ -397,6 +400,8 @@ class ElpkImporter:
                 'KHEW_B': 1,
                 'KHEW_C': 5,    # KHEW_C should be a duplicate of KHEM_C
             }
+        else:
+            raise Exception(f'Unexpected skeleton_bin_type: {skeleton_bin_type}')
 
         skeleton_dict = dict()
 
