@@ -67,14 +67,16 @@ class ImportElpk(Operator, ImportHelper):
     def armature_callback(self, context):
         items = []
         ao = context.active_object
-        ao_name = ao.name
 
-        if ao and ao.type == 'ARMATURE':
-            # Add the selected armature first so that it's the default value
-            items.append((ao_name, ao_name, ""))
+        if ao:
+            ao_name = ao.name
+            if ao and ao.type == 'ARMATURE':
+                # Add the selected armature first so that it's the default value
+                items.append((ao_name, ao_name, ""))
 
-        for a in [arm for arm in bpy.data.objects if arm.type == 'ARMATURE' and arm.name != ao_name]:
-            items.append((a.name, a.name, ""))
+            for a in [arm for arm in bpy.data.objects if arm.type == 'ARMATURE' and arm.name != ao_name]:
+                items.append((a.name, a.name, ""))
+
         return items
 
     # Animation
