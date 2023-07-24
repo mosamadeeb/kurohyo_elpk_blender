@@ -277,10 +277,10 @@ class ElpkImporter:
             khcame_list = page.files[KHCame]
             for khpose in page.files[KHPose]:
                 if KHPoseFlag.CAMERA in khpose.pose_flags:
-                    cams.append(self.make_camera_action(khpose, cam_counter, khcame_list[0] if khcame_list else None))
+                    cams.append(self.make_camera_action(khpose, cam_counter, khcame_list[0] if khcame_list else None, page.page_hash))
                     cam_counter += 1
                 elif self.armature_name:
-                    poses.append(self.make_action(khpose))
+                    poses.append(self.make_action(khpose, page.page_hash))
 
             for khmig in page.files[KHMig]:
                 self.make_image(khmig, page.page_hash)
@@ -337,13 +337,13 @@ class ElpkImporter:
 
         # Try to rename camera actions
         if self.rename_cameras and cams and poses:
-            for p in [x for x in poses if x.name.startswith('exMB_') and x.name[10:12] == '_A']:
+            for p in [x for x in poses if x.name.startswith('MB_')]:
                 cam = [c for c in cams if c.frame_range[1] == p.frame_range[1]]
 
                 if len(cam) == 1:
                     cam = cam[0]
                     cams.remove(cam)
-                    cam.name = f'{p.name[:10]}_Camera {p.name[13:]}'
+                    cam.name = f'CA{p.name[2:8]}{cam.name[8:]}'
 
         if self.look_for_textures and 'MDL' in os.path.basename(self.filepath):
             head, tail = os.path.split(self.filepath)
@@ -744,7 +744,7 @@ class ElpkImporter:
 
         return fcurves
 
-    def make_camera_action(self, khpose: KHPose, index: int, khcame: KHCame) -> Action:
+    def make_camera_action(self, khpose: KHPose, index: int, khcame: KHCame, page_hash: int) -> Action:
         # We should expect exactly 1 node
         if not khpose.bones:
             return None
@@ -755,7 +755,7 @@ class ElpkImporter:
 
         node = khpose.bones[0]
 
-        action = bpy.data.actions.new(f'{khpose.name}_{str(index).rjust(2, "0")} [{os.path.basename(self.filepath)}]')
+        action = bpy.data.actions.new(f'CA____{str(index).rjust(2, "0")} ({page_hash.to_bytes(4, byteorder="little").hex().upper()}) [{os.path.basename(self.filepath)}]')
 
         group = action.groups.new("Camera")
         group_name = group.name
@@ -849,8 +849,9 @@ class ElpkImporter:
 
         return action
 
-    def make_action(self, khpose: KHPose) -> Action:
-        action = bpy.data.actions.new(f'{khpose.name} [{os.path.basename(self.filepath)}]')
+    def make_action(self, khpose: KHPose, page_hash: int) -> Action:
+        name = khpose.name[2:] if khpose.name.startswith('ex') else khpose.name
+        action = bpy.data.actions.new(f'{name} ({page_hash.to_bytes(4, byteorder="little").hex().upper()}) [{os.path.basename(self.filepath)}]')
 
         ao = self.context.active_object
         bone_props = setup_armature(ao)
