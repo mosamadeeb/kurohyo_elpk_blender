@@ -898,31 +898,32 @@ class ElpkImporter:
             rotation_curves = self.make_fcurves(action, group_name, rotation_euler, f'{bone_path}.rotation_euler', True)
 
             # Fill the curves list
-            for x in [i for i in range(3) if i not in [fc.array_index for fc in rotation_curves]]:
-                rotation_curves.insert(x, None)
+            if len(rotation_curves) != 0:
+                for x in [i for i in range(3) if i not in [fc.array_index for fc in rotation_curves]]:
+                    rotation_curves.insert(x, None)
 
-            rotation: List[KHPoseChannel] = list()
-            for i in range(4):
-                channel = KHPoseChannel()
-                channel.keyframes = list()
-                rotation.append(channel)
-
-            # Evaluate the quaternions
-            for f in range(int(khpose.end_frame)):
-                rot = Euler(tuple(map(lambda fc: fc.evaluate(float(f))
-                                      if fc else 0.0, rotation_curves)), 'XZY').to_quaternion()
-
+                rotation: List[KHPoseChannel] = list()
                 for i in range(4):
-                    kf = KHPoseKeyframe()
-                    kf.frame = f
-                    kf.value = rot[i]
-                    rotation[i].keyframes.append(kf)
+                    channel = KHPoseChannel()
+                    channel.keyframes = list()
+                    rotation.append(channel)
 
-            self.make_fcurves(action, group_name, rotation, f'{bone_path}.rotation_quaternion', False)
+                # Evaluate the quaternions
+                for f in range(int(khpose.end_frame)):
+                    rot = Euler(tuple(map(lambda fc: fc.evaluate(float(f))
+                                        if fc else 0.0, rotation_curves)), 'XZY').to_quaternion()
 
-            for fc in rotation_curves:
-                if fc:
-                    action.fcurves.remove(fc)
+                    for i in range(4):
+                        kf = KHPoseKeyframe()
+                        kf.frame = f
+                        kf.value = rot[i]
+                        rotation[i].keyframes.append(kf)
+
+                self.make_fcurves(action, group_name, rotation, f'{bone_path}.rotation_quaternion', False)
+
+                for fc in rotation_curves:
+                    if fc:
+                        action.fcurves.remove(fc)
 
         self.context.scene.render.fps = 30
         self.context.scene.frame_start = 0
