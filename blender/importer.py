@@ -803,7 +803,7 @@ class ElpkImporter:
             rotation.append(channel)
 
         # Evaluate the quaternions
-        for f in range(int(end_frame)):
+        for f in range(int(end_frame) + 1):
             loc = Vector(tuple(map(lambda fc: fc.evaluate(float(f)) if fc else 0.0, location_curves)))
             foc = Vector(tuple(map(lambda fc: fc.evaluate(float(f)) if fc else 0.0, focus_curves)))
             rol = roll_curve.evaluate(float(f)) if roll_curve else 0.0
@@ -909,7 +909,7 @@ class ElpkImporter:
                     rotation.append(channel)
 
                 # Evaluate the quaternions
-                for f in range(int(khpose.end_frame)):
+                for f in range(int(khpose.end_frame) + 1):
                     rot = Euler(tuple(map(lambda fc: fc.evaluate(float(f))
                                         if fc else 0.0, rotation_curves)), 'XZY').to_quaternion()
 
