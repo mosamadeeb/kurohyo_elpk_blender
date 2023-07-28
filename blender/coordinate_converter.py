@@ -7,10 +7,14 @@ from mathutils import Quaternion, Vector, Euler
 def pos_to_blender(pos):
     return Vector([-pos[0], pos[2], pos[1]])
 
+def pos_from_blender(pos):
+    return pos_to_blender(pos)
 
 def pos_to_blender_scaled(pos):
     return pos_to_blender(list(map(lambda x: x / 10.0, pos)))
 
+def pos_from_blender_scaled(pos):
+    return pos_from_blender(list(map(lambda x: x * 10.0, pos)))
 
 def rot_to_blender(rot):
     return Euler(pos_to_blender(rot[:])[:]).to_quaternion()

@@ -7,6 +7,8 @@ from bpy.types import Action, FCurve, Operator
 from bpy_extras.io_utils import ExportHelper
 from mathutils import Euler, Quaternion, Vector
 
+from .coordinate_converter import pos_from_blender_scaled
+
 from ..kurohyo_lib import *
 from .bone_props import KHBlenderBoneProps, get_edit_bones_props
 
@@ -373,9 +375,20 @@ class KHPoseExporter:
         # Initial location/rotation/scale
         # This should instead be used to store the value of channels that have a single keyframe
         # (i.e. channels that were originally created from initial location/rotation/scale)
-        bone.initial_location = Vector([c.keyframes[0].value if c else 0.0 for c in bone.location])
+
+        bone_loc = pos_from_blender_scaled(bone_loc)
+        parent_loc = pos_from_blender_scaled(parent_loc)
+
+        bone.initial_location = Vector([c.keyframes[0].value if c else (
+            bone_loc[i] - parent_loc[i]) for i, c in enumerate(bone.location)])
         bone.initial_rotation = Euler([c.keyframes[0].value if c else 0.0 for c in bone.rotation])
         bone.initial_scale = Vector([c.keyframes[0].value if c else 1.0 for c in bone.scale])
+
+        # Remove channels that have a single keyframe, as that was put in the initial values
+        for curve in (bone.location, bone.rotation, bone.scale):
+            for i in reversed(range(3)):
+                if curve[i] and len(curve[i].keyframes) == 1:
+                    curve.pop(i)
 
         return bone
 
