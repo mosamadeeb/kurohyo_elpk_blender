@@ -1,5 +1,7 @@
 # kurohyo_elpk_blender
-Blender Import addon for Kurohyo PSP games ELPK container files. Can import models, textures, and animations. Supports Blender versions >= 2.93 and <= 3.2.
+Blender Import addon for Kurohyo PSP games ELPK container files. Can import models, textures, and animations. Can also export animations.
+
+Supports Blender versions >= 2.93 and <= 3.2.
  
 ***
  
@@ -18,10 +20,18 @@ After installing the addon, you should be able to see the preferences under the 
 ***
 
 # Usage
-In Blender, go to File -> Import -> **Kurohyo ELPK Container**
+- ## Importing
 
-Textures will be loaded automatically when loading a model, if the textures file is in the same directory as the model.
-In order to import animations, a compatible armature from Kurohyo must be selected first.
+  In Blender, go to File -> Import -> **Kurohyo ELPK Container**
+  
+  Textures will be loaded automatically when loading a model, if the textures file is in the same directory as the model.
+  In order to import animations, a compatible armature from Kurohyo must be selected first.
+
+- ## Exporting
+
+  For exporting animations, go to File -> Export -> **Kurohyou Animation (.pose)**
+
+  Select the action to export and the armature that the action was made for. By default, the currently selected armature and action in Blender will be selected.
 
 ***
 
@@ -29,7 +39,3 @@ In order to import animations, a compatible armature from Kurohyo must be select
 Thanks to Capitan Retraso for [rELPKckr](https://github.com/CapitanRetraso/rELPKckr).
 
 Thanks to Violet for helping with the formats and for testing.
-
-***
-
-## Please credit this addon properly when using content created using the addon. This applies to mods, model/animation ports, and even MMD videos.
