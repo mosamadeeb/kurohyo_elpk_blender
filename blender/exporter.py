@@ -363,10 +363,6 @@ class KHPoseExporter:
                 kf.frame = frame
                 kf.value = value
 
-                # Negate X axis
-                if i == 0:
-                    kf.value = -kf.value
-
                 bone.scale[i].keyframes.append(kf)
 
         # Swap Y and Z axes
