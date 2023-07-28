@@ -24,6 +24,8 @@ class ExportKHPose(Operator, ExportHelper):
     filename_ext = '.pose'
     check_extension = None
 
+    prev_action_name: str = ''
+
     def action_callback(self, context: bpy.context):
         items = []
 
@@ -64,19 +66,28 @@ class ExportKHPose(Operator, ExportHelper):
 
     def action_update(self, context: bpy.context):
         name = self.action_name
+
+        if name == self.prev_action_name:
+            return
+
+        self.prev_action_name = name
+
         if '(' in name and ']' in name:
             # Used to avoid suffixes (e.g ".001")
-            pose_name: str = name[:name.index('(')].strip()
+            name = name[:name.index('(')].strip()
 
-            if pose_name.startswith('ex'):
-                pose_name = pose_name[2:]
+        if name.startswith('ex'):
+            name = name[2:]
 
-            # Set the file name
-            for screenArea in context.window.screen.areas:
-                if screenArea.type == 'FILE_BROWSER':
-                    params = screenArea.spaces[0].params
-                    params.filename = f'{pose_name}.pose'
-                    break
+        # Update pose name only once when an action is chosen
+        self.pose_name = 'ex' + name
+
+        # Set the file name
+        for screenArea in context.window.screen.areas:
+            if screenArea.type == 'FILE_BROWSER':
+                params = screenArea.spaces[0].params
+                params.filename = f'{name}.pose'
+                break
 
     export_format: EnumProperty(
         items=[('pose', 'Model Animation', ''),
@@ -101,6 +112,11 @@ class ExportKHPose(Operator, ExportHelper):
         description="The armature which the action will use as a base",
     )
 
+    pose_name: StringProperty(
+        name="Animation Name",
+        description="Internal pose file animation name",
+    )
+
     def draw(self, context):
         layout = self.layout
 
@@ -111,6 +127,7 @@ class ExportKHPose(Operator, ExportHelper):
         layout.separator()
         layout.prop(self, 'armature_name')
         layout.prop(self, 'action_name')
+        layout.prop(self, 'pose_name')
         layout.separator()
 
         self.action_update(context)
@@ -184,6 +201,8 @@ class KHPoseExporter:
         self.pose = KHPose()
         self.came = KHCame() if self.is_camera else None
 
+        self.pose.name = export_settings.get("pose_name")
+
     bone_props: Dict[str, KHBlenderBoneProps]
 
     def clean_action_name(self, name):
@@ -230,8 +249,6 @@ class KHPoseExporter:
 
         if not action:
             raise Exception('Action not found')
-
-        self.pose.name = 'ex' + self.clean_action_name(self.action_name)
 
         self.pose.bones = list()
         for group in action.groups.values():
