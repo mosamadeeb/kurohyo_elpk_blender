@@ -344,12 +344,25 @@ class KHPoseExporter:
 
         # ------------------- rotation -------------------
         if any(rot_curves):
+            keys = list()
+
             for i in range(3):
                 bone.rotation[i] = KHPoseChannel()
 
+                if rot_curves[i]:
+                    keyframes = [None] * 2 * len(rot_curves[i].keyframe_points)
+                    rot_curves[i].keyframe_points.foreach_get('co', keyframes)
+
+                    keys.append(dict.fromkeys(keyframes[::2], True))
+
             # Evaluate the euler angles
             end_frame = int(max([c.keyframe_points[-1].co[0] for c in rot_curves if c and len(c.keyframe_points)]))
+
             for f in range(end_frame + 1):
+                # Check if any of the channels actually has a keyframe here
+                if not any([d.get(f) == True for d in keys]):
+                    continue
+
                 rot = Quaternion(tuple(map(lambda fc: fc.evaluate(float(f))
                                  if fc else 0.0, rot_curves))).to_euler('XZY')
 
