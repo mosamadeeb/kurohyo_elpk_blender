@@ -3,6 +3,7 @@ from bpy.props import EnumProperty, StringProperty
 from bpy.types import AddonPreferences
 
 from .importer import ImportElpk, menu_func_import_kurohyo
+from .exporter import ExportKHPose, menu_func_export_khpose
 
 
 class KHSkeletonPreferences(AddonPreferences):
@@ -22,7 +23,7 @@ class KHSkeletonPreferences(AddonPreferences):
         name='Path to skeleton.bin',
         description='Path to the skeleton file. In Kurohyo 1, this is \"globals.bin\".\nIn Kurohyo 2, this is \"skeleton.bin\"',
         subtype='FILE_PATH',
-        )
+    )
 
     def draw(self, context):
         layout = self.layout
@@ -38,6 +39,7 @@ class KHSkeletonPreferences(AddonPreferences):
 classes = (
     KHSkeletonPreferences,
     ImportElpk,
+    ExportKHPose,
 )
 
 
@@ -47,10 +49,12 @@ def register():
 
     # Add to the import menu
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import_kurohyo)
+    bpy.types.TOPBAR_MT_file_export.append(menu_func_export_khpose)
 
 
 def unregister():
     # Remove from the import menu
+    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export_khpose)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import_kurohyo)
 
     for c in reversed(classes):
