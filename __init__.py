@@ -2,7 +2,7 @@
 bl_info = {
     "name": "Kurohyo ELPK File Import",
     "author": "SutandoTsukai181",
-    "version": (1, 0, 0),
+    "version": (1, 1, 0),
     "blender": (2, 93, 0),
     "location": "File > Import-Export",
     "description": "Import Kurohyo ELPK Models and Animations",
