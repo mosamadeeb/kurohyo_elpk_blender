@@ -277,10 +277,11 @@ class ElpkImporter:
             khcame_list = page.files[KHCame]
             for khpose in page.files[KHPose]:
                 if KHPoseFlag.CAMERA in khpose.pose_flags:
-                    cams.append(self.make_camera_action(khpose, cam_counter, khcame_list[0] if khcame_list else None))
+                    cams.append(self.make_camera_action(khpose, cam_counter,
+                                khcame_list[0] if khcame_list else None, page.page_hash))
                     cam_counter += 1
                 elif self.armature_name:
-                    poses.append(self.make_action(khpose))
+                    poses.append(self.make_action(khpose, page.page_hash))
 
             for khmig in page.files[KHMig]:
                 self.make_image(khmig, page.page_hash)
@@ -337,13 +338,13 @@ class ElpkImporter:
 
         # Try to rename camera actions
         if self.rename_cameras and cams and poses:
-            for p in [x for x in poses if x.name.startswith('exMB_') and x.name[10:12] == '_A']:
+            for p in [x for x in poses if x.name.startswith('MB_')]:
                 cam = [c for c in cams if c.frame_range[1] == p.frame_range[1]]
 
                 if len(cam) == 1:
                     cam = cam[0]
                     cams.remove(cam)
-                    cam.name = f'{p.name[:10]}_Camera {p.name[13:]}'
+                    cam.name = f'CA{p.name[2:8]}{cam.name[8:]}'
 
         if self.look_for_textures and 'MDL' in os.path.basename(self.filepath):
             head, tail = os.path.split(self.filepath)
@@ -713,7 +714,7 @@ class ElpkImporter:
     def make_fcurves(self, action: Action, group_name: str, curve: List[KHPoseChannel], data_path: str, convert: bool) -> List[FCurve]:
         if convert:
             # Negate X axis
-            if curve[0]:
+            if curve[0] and not data_path.endswith('scale'):
                 for kf in curve[0].keyframes:
                     kf.value *= -1.0
 
@@ -744,7 +745,7 @@ class ElpkImporter:
 
         return fcurves
 
-    def make_camera_action(self, khpose: KHPose, index: int, khcame: KHCame) -> Action:
+    def make_camera_action(self, khpose: KHPose, index: int, khcame: KHCame, page_hash: int) -> Action:
         # We should expect exactly 1 node
         if not khpose.bones:
             return None
@@ -755,7 +756,8 @@ class ElpkImporter:
 
         node = khpose.bones[0]
 
-        action = bpy.data.actions.new(f'{khpose.name}_{str(index).rjust(2, "0")} [{os.path.basename(self.filepath)}]')
+        action = bpy.data.actions.new(
+            f'CA____{str(index).rjust(2, "0")} ({page_hash.to_bytes(4, byteorder="little").hex().upper()}) [{os.path.basename(self.filepath)}]')
 
         group = action.groups.new("Camera")
         group_name = group.name
@@ -803,7 +805,7 @@ class ElpkImporter:
             rotation.append(channel)
 
         # Evaluate the quaternions
-        for f in range(int(end_frame)):
+        for f in range(int(end_frame) + 1):
             loc = Vector(tuple(map(lambda fc: fc.evaluate(float(f)) if fc else 0.0, location_curves)))
             foc = Vector(tuple(map(lambda fc: fc.evaluate(float(f)) if fc else 0.0, focus_curves)))
             rol = roll_curve.evaluate(float(f)) if roll_curve else 0.0
@@ -849,8 +851,10 @@ class ElpkImporter:
 
         return action
 
-    def make_action(self, khpose: KHPose) -> Action:
-        action = bpy.data.actions.new(f'{khpose.name} [{os.path.basename(self.filepath)}]')
+    def make_action(self, khpose: KHPose, page_hash: int) -> Action:
+        name = khpose.name[2:] if khpose.name.startswith('ex') else khpose.name
+        action = bpy.data.actions.new(
+            f'{name} ({page_hash.to_bytes(4, byteorder="little").hex().upper()}) [{os.path.basename(self.filepath)}]')
 
         ao = self.context.active_object
         bone_props = setup_armature(ao)
@@ -877,6 +881,18 @@ class ElpkImporter:
             rotation_euler = bone.rotation
             location = bone.location
 
+            # initial location/rotation/scale should be made into a keyframe at frame 0
+            # therefore if a channel does not exist, it should be created first
+            for curve, initial in [(location, bone.initial_location), (rotation_euler, bone.initial_rotation), (scale, bone.initial_scale)]:
+                for i in range(3):
+                    if not curve[i]:
+                        channel = KHPoseChannel()
+                        channel.keyframes.append(KHPoseKeyframe())
+                        channel.keyframes[0].frame = 0.0
+                        channel.keyframes[0].value = initial[i]
+
+                        curve[i] = channel
+
             bone_prop = bone_props.get(bone.name)
 
             bone_loc = bone_prop.loc if bone_prop else Vector()
@@ -897,31 +913,33 @@ class ElpkImporter:
             rotation_curves = self.make_fcurves(action, group_name, rotation_euler, f'{bone_path}.rotation_euler', True)
 
             # Fill the curves list
-            for x in [i for i in range(3) if i not in [fc.array_index for fc in rotation_curves]]:
-                rotation_curves.insert(x, None)
+            if len(rotation_curves) != 0:
+                for x in [i for i in range(3) if i not in [fc.array_index for fc in rotation_curves]]:
+                    rotation_curves.insert(x, None)
 
-            rotation: List[KHPoseChannel] = list()
-            for i in range(4):
-                channel = KHPoseChannel()
-                channel.keyframes = list()
-                rotation.append(channel)
-
-            # Evaluate the quaternions
-            for f in range(int(khpose.end_frame)):
-                rot = Euler(tuple(map(lambda fc: fc.evaluate(float(f))
-                                      if fc else 0.0, rotation_curves)), 'XZY').to_quaternion()
-
+                rotation: List[KHPoseChannel] = list()
                 for i in range(4):
-                    kf = KHPoseKeyframe()
-                    kf.frame = f
-                    kf.value = rot[i]
-                    rotation[i].keyframes.append(kf)
+                    channel = KHPoseChannel()
+                    channel.keyframes = list()
+                    rotation.append(channel)
 
-            self.make_fcurves(action, group_name, rotation, f'{bone_path}.rotation_quaternion', False)
+                # Evaluate the quaternions
+                for f in range(int(khpose.end_frame) + 1):
 
-            for fc in rotation_curves:
-                if fc:
-                    action.fcurves.remove(fc)
+                    rot = Euler(tuple(map(lambda fc: fc.evaluate(float(f))
+                                          if fc else 0.0, rotation_curves)), 'XZY').to_quaternion()
+
+                    for i in range(4):
+                        kf = KHPoseKeyframe()
+                        kf.frame = f
+                        kf.value = rot[i]
+                        rotation[i].keyframes.append(kf)
+
+                self.make_fcurves(action, group_name, rotation, f'{bone_path}.rotation_quaternion', False)
+
+                for fc in rotation_curves:
+                    if fc:
+                        action.fcurves.remove(fc)
 
         self.context.scene.render.fps = 30
         self.context.scene.frame_start = 0
