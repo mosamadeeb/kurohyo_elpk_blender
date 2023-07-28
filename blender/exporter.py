@@ -91,7 +91,7 @@ class ExportKHPose(Operator, ExportHelper):
 
     export_format: EnumProperty(
         items=[('pose', 'Model Animation', ''),
-               ('came', 'Camera Animation', ''),
+            #    ('came', 'Camera Animation', ''),
                ],
         name="Export Format",
         description="The animation format to export as",
